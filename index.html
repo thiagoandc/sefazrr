@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Leitor de DANFE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+:root{
+  --bg:#F3F6F7; --surface:#FFFFFF; --ink:#102A2E; --muted:#5B6B6E; --line:#D5DDDF;
+  --petrol:#0E4A54; --petrol-ink:#FFFFFF; --mark:#F2B84B; --ok:#1E7A4F; --bad:#B3261E;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1A1C; --surface:#142629; --ink:#E6EEF0; --muted:#94A7AA; --line:#284145;
+    --petrol:#5FB3BF; --petrol-ink:#08292E; --mark:#F2B84B; --ok:#5CC98F; --bad:#F2877F;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D1A1C; --surface:#142629; --ink:#E6EEF0; --muted:#94A7AA; --line:#284145;
+  --petrol:#5FB3BF; --petrol-ink:#08292E; --mark:#F2B84B; --ok:#5CC98F; --bad:#F2877F;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.5 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;}
+main{max-width:560px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.5rem;line-height:1.2;margin:4px 0 4px;font-weight:600}
+.sub{color:var(--muted);margin:0 0 20px;font-size:.95rem}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
+#reader{width:100%;border-radius:10px;overflow:hidden;background:#000;display:none}
+#reader video{width:100%!important}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+button,.btn{font:inherit;font-weight:600;border-radius:8px;padding:13px 14px;border:1px solid var(--line);
+  background:var(--surface);color:var(--ink);cursor:pointer;text-align:center;text-decoration:none;display:block}
+button.primary{background:var(--petrol);color:var(--petrol-ink);border-color:var(--petrol);grid-column:1/-1;font-size:1.05rem;padding:16px}
+button:focus-visible,.btn:focus-visible,input:focus-visible{outline:3px solid var(--mark);outline-offset:2px}
+label.file{position:relative}
+label.file input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.manual{display:flex;gap:8px;margin:4px 0 8px}
+.manual input{flex:1;min-width:0;font:500 1rem "IBM Plex Mono",monospace;padding:12px;border-radius:8px;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.status{min-height:1.5em;color:var(--muted);font-size:.9rem;margin:6px 0 16px}
+.status.err{color:var(--bad)}
+#result{display:none}
+.key{background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--mark);
+  border-radius:8px;padding:16px;margin-bottom:14px}
+.key .groups{font-size:1.12rem;letter-spacing:.02em;word-spacing:.3em;line-height:1.7;word-break:break-word}
+.key .dv{margin-top:8px;font-size:.9rem;font-weight:600}
+.dv.ok{color:var(--ok)} .dv.bad{color:var(--bad)}
+.key .copy{margin-top:12px;width:100%}
+dl{margin:0 0 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+dl div{display:grid;grid-template-columns:40% 60%;gap:8px;padding:11px 14px;border-top:1px solid var(--line)}
+dl div:first-child{border-top:0}
+dt{color:var(--muted);font-size:.9rem}
+dd{margin:0;font-weight:500;word-break:break-word}
+h2{font-size:1.05rem;margin:22px 0 8px}
+.links{display:grid;gap:8px}
+.note{font-size:.85rem;color:var(--muted);margin:10px 0 0}
+.hist{list-style:none;padding:0;margin:0}
+.hist li button{width:100%;text-align:left;font-weight:400;margin-bottom:6px;padding:10px 12px}
+.hist small{display:block;color:var(--muted)}
+@media (prefers-reduced-motion: no-preference){ #result.show{animation:in .25s ease-out} }
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Leitor de DANFE</h1>
+  <p class="sub">Aponte a câmera para o código de barras ou o QR Code do documento fiscal.</p>
+
+  <div id="reader"></div>
+  <div class="actions">
+    <button class="primary" id="btnCam">Abrir câmera</button>
+    <label class="btn file">Ler de uma foto
+      <input type="file" id="foto" accept="image/*" capture="environment">
+    </label>
+    <button id="btnStop" disabled>Parar câmera</button>
+  </div>
+
+  <form class="manual" id="formManual" onsubmit="return false">
+    <input id="manual" inputmode="text" autocomplete="off" placeholder="Ou digite/cole a chave (44 posições)" aria-label="Chave de acesso">
+    <button id="btnOk" type="button">Ver</button>
+  </form>
+  <div class="status" id="status" role="status"></div>
+
+  <section id="result" aria-live="polite">
+    <div class="key">
+      <div class="groups mono" id="kGroups"></div>
+      <div class="dv" id="kDv"></div>
+      <button class="copy" id="btnCopy">Copiar chave</button>
+    </div>
+    <dl id="kData"></dl>
+    <h2>Consultar o documento completo</h2>
+    <div class="links" id="links"></div>
+    <p class="note">Itens, valores e destinatário não estão no código de barras — ele carrega só a chave de acesso. Os demais dados vêm da consulta no portal ou do XML.</p>
+  </section>
+
+  <h2>Leituras recentes</h2>
+  <ul class="hist" id="hist"></ul>
+  <button id="btnClear" style="margin-top:6px">Limpar histórico</button>
+</main>
+
+<script>
+const UF={11:"RO",12:"AC",13:"AM",14:"RR",15:"PA",16:"AP",17:"TO",21:"MA",22:"PI",23:"CE",24:"RN",25:"PB",26:"PE",27:"AL",28:"SE",29:"BA",31:"MG",32:"ES",33:"RJ",35:"SP",41:"PR",42:"SC",43:"RS",50:"MS",51:"MT",52:"GO",53:"DF"};
+const MOD={"55":"NF-e (modelo 55)","65":"NFC-e (modelo 65)","57":"CT-e (modelo 57)","67":"CT-e OS (modelo 67)","58":"MDF-e (modelo 58)","63":"BP-e (modelo 63)","66":"NF3e (modelo 66)","62":"NFCom (modelo 62)"};
+const EMIS={"1":"Normal","2":"Contingência FS-IA","3":"Contingência SCAN","4":"Contingência EPEC","5":"Contingência FS-DA","6":"Contingência SVC-AN","7":"Contingência SVC-RS","8":"Contingência SVC-SP","9":"Contingência off-line (NFC-e)"};
+const MES=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+const $=id=>document.getElementById(id);
+let scanner=null, current="";
+
+function status(msg,err){const s=$("status");s.textContent=msg||"";s.className="status"+(err?" err":"");}
+
+// Extrai a chave de qualquer texto lido (código de barras, URL do QR Code da NFC-e etc.)
+function extrairChave(txt){
+  const t=String(txt||"").toUpperCase().replace(/\s|\./g,"");
+  const m=t.match(/\d{6}[0-9A-Z]{12}\d{2}\d{2}\d{3}\d{9}\d\d{8}\d/);
+  return m?m[0]:null;
+}
+// DV módulo 11 (aceita CNPJ alfanumérico: valor = código ASCII − 48)
+function calcDV(k43){
+  let soma=0,peso=2;
+  for(let i=k43.length-1;i>=0;i--){soma+=(k43.charCodeAt(i)-48)*peso;peso=peso===9?2:peso+1;}
+  const r=soma%11;return r<2?0:11-r;
+}
+function fmtDoc(d){
+  if(/^000\d{11}$/.test(d)){const c=d.slice(3);return {tipo:"CPF",txt:`${c.slice(0,3)}.${c.slice(3,6)}.${c.slice(6,9)}-${c.slice(9)}`};}
+  return {tipo:"CNPJ",txt:`${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12)}`};
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+function mostrar(ch){
+  current=ch;
+  const p={uf:ch.slice(0,2),aa:ch.slice(2,4),mm:ch.slice(4,6),doc:ch.slice(6,20),mod:ch.slice(20,22),
+    serie:ch.slice(22,25),nnf:ch.slice(25,34),tpEmis:ch.slice(34,35),cnf:ch.slice(35,43),dv:ch.slice(43)};
+  const dvOk=calcDV(ch.slice(0,43))===Number(p.dv);
+  $("kGroups").textContent=ch.match(/.{1,4}/g).join(" ");
+  const dvEl=$("kDv");
+  dvEl.textContent=dvOk?"Dígito verificador confere":"Dígito verificador não confere — chave inválida ou mal lida";
+  dvEl.className="dv "+(dvOk?"ok":"bad");
+  const doc=fmtDoc(p.doc), mm=Number(p.mm);
+  const nnf=Number(p.nnf).toLocaleString("pt-BR");
+  const rows=[
+    ["Documento",MOD[p.mod]||`Modelo ${p.mod}`],
+    ["UF do emitente",UF[+p.uf]?`${UF[+p.uf]} (código ${p.uf})`:`Código ${p.uf}`],
+    ["Emissão",(mm>=1&&mm<=12)?`${MES[mm-1]}/20${p.aa}`:`${p.mm}/20${p.aa}`],
+    [`${doc.tipo} do emitente`,doc.txt],
+    ["Série",String(Number(p.serie))],
+    ["Número",nnf],
+    ["Forma de emissão",EMIS[p.tpEmis]||p.tpEmis],
+    ["Código numérico",p.cnf],
+  ];
+  $("kData").innerHTML=rows.map(r=>`<div><dt>${esc(r[0])}</dt><dd>${esc(r[1])}</dd></div>`).join("");
+
+  const cnpjLimpo=p.doc;
+  const links=[];
+  if(p.mod==="55"){
+    links.push(["Portal Nacional da NF-e (consulta completa)","https://www.nfe.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=completa&tipoConteudo=XbSeqxE8pl8="]);
+    links.push(["Portal Nacional da NF-e (consulta resumo)","https://www.nfe.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=resumo&tipoConteudo=7PhJ+gAVw2g="]);
+  } else if(p.mod==="57"||p.mod==="67"){
+    links.push(["Portal do CT-e (consulta)","https://www.cte.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=completa&tipoConteudo=mCK/KoCqru0="]);
+  } else if(p.mod==="58"){
+    links.push(["Portal do MDF-e (consulta)","https://dfe-portal.svrs.rs.gov.br/MDFE/Consulta"]);
+  } else if(p.mod==="65"){
+    links.push(["Consulta NFC-e (portal da UF emitente)","https://www.nfce.fazenda.gov.br/portal/consultaRecaptcha.aspx"]);
+  }
+  if(doc.tipo==="CNPJ" && /^\d{14}$/.test(cnpjLimpo)){
+    links.push(["Dados do emitente (CNPJ)",`https://casadosdados.com.br/solucao/cnpj?q=${cnpjLimpo}`]);
+  }
+  $("links").innerHTML=links.map(l=>`<a class="btn" href="${esc(l[1])}" target="_blank" rel="noopener">${esc(l[0])}</a>`).join("")
+    +`<p class="note">No portal, toque em “Copiar chave” acima e cole no campo da consulta.</p>`;
+
+  const r=$("result");r.style.display="block";r.classList.remove("show");void r.offsetWidth;r.classList.add("show");
+  salvarHist(ch,`${MOD[p.mod]?MOD[p.mod].split(" ")[0]:"Mod "+p.mod} nº ${nnf} — ${doc.txt}`);
+  r.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
+}
+
+function processar(txt){
+  const ch=extrairChave(txt);
+  if(!ch){status("Não encontrei uma chave de acesso de 44 posições nessa leitura. Tente de novo, com o código mais centralizado.",true);return false;}
+  status("Chave lida.");
+  if(navigator.vibrate) navigator.vibrate(80);
+  mostrar(ch);return true;
+}
+
+function formatos(){
+  const F=Html5QrcodeSupportedFormats;
+  return [F.CODE_128,F.QR_CODE,F.ITF,F.CODE_39];
+}
+
+async function abrirCamera(){
+  if(typeof Html5Qrcode==="undefined"){status("O leitor não carregou. Use “Ler de uma foto” ou digite a chave.",true);return;}
+  $("reader").style.display="block";
+  scanner=scanner||new Html5Qrcode("reader",{formatsToSupport:formatos(),useBarCodeDetectorIfSupported:true,verbose:false});
+  try{
+    await scanner.start({facingMode:"environment"},
+      {fps:12,qrbox:(w,h)=>({width:Math.floor(w*0.92),height:Math.max(80,Math.floor(h*0.4))})},
+      async txt=>{ if(processar(txt)) await pararCamera(); },()=>{});
+    $("btnStop").disabled=false;
+    status("Câmera aberta. Deixe o código de barras na horizontal, preenchendo a largura.");
+  }catch(e){
+    $("reader").style.display="none";
+    status("A câmera não abriu aqui. Use “Ler de uma foto” (abre a câmera do celular) ou digite a chave.",true);
+  }
+}
+async function pararCamera(){
+  if(scanner&&scanner.isScanning){try{await scanner.stop();}catch(e){}}
+  $("reader").style.display="none";$("btnStop").disabled=true;
+}
+
+$("btnCam").onclick=abrirCamera;
+$("btnStop").onclick=()=>{pararCamera();status("");};
+$("foto").onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  if(typeof Html5Qrcode==="undefined"){status("O leitor não carregou. Digite a chave.",true);return;}
+  status("Lendo a foto…");
+  await pararCamera();
+  const tmp=new Html5Qrcode("reader",{formatsToSupport:formatos(),useBarCodeDetectorIfSupported:true,verbose:false});
+  try{const txt=await tmp.scanFile(f,false);processar(txt);}
+  catch(err){status("Não achei código na foto. Fotografe mais de perto, com boa luz e o código reto.",true);}
+  e.target.value="";
+};
+$("btnOk").onclick=()=>processar($("manual").value);
+$("manual").addEventListener("keydown",e=>{if(e.key==="Enter")processar($("manual").value);});
+$("btnCopy").onclick=async()=>{
+  try{await navigator.clipboard.writeText(current);$("btnCopy").textContent="Chave copiada";}
+  catch(e){$("manual").value=current;$("manual").select();$("btnCopy").textContent="Selecionada no campo acima";}
+  setTimeout(()=>$("btnCopy").textContent="Copiar chave",1800);
+};
+
+// Histórico local (só neste aparelho)
+function lerHist(){try{return JSON.parse(localStorage.getItem("danfe_hist")||"[]");}catch(e){return [];}}
+function salvarHist(ch,desc){
+  try{let h=lerHist().filter(x=>x.ch!==ch);h.unshift({ch,desc,t:Date.now()});h=h.slice(0,20);
+    localStorage.setItem("danfe_hist",JSON.stringify(h));}catch(e){}
+  renderHist();
+}
+function renderHist(){
+  const h=lerHist();
+  $("hist").innerHTML=h.length?h.map(x=>`<li><button data-ch="${esc(x.ch)}">${esc(x.desc)}<small class="mono">${esc(x.ch)}</small></button></li>`).join("")
+    :`<li class="note">Nenhuma leitura ainda. Abra a câmera para começar.</li>`;
+  $("btnClear").style.display=h.length?"block":"none";
+  $("hist").querySelectorAll("button").forEach(b=>b.onclick=()=>mostrar(b.dataset.ch));
+}
+$("btnClear").onclick=()=>{try{localStorage.removeItem("danfe_hist");}catch(e){}renderHist();};
+renderHist();
+</script>
+</body>
+</html>
