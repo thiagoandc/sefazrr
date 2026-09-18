@@ -46,6 +46,12 @@ button:focus-visible,.btn:focus-visible,input:focus-visible{outline:3px solid va
 label.file{position:relative}
 label.file input{position:absolute;inset:0;opacity:0;cursor:pointer}
 .manual{display:flex;gap:8px;margin:4px 0 8px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;margin:6px 0 14px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.two .btn,.two button{width:100%}
+textarea{width:100%;min-height:120px;margin-top:10px;font:500 .8rem "IBM Plex Mono",monospace;
+  padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+dd.vazio{color:var(--muted);font-weight:400;font-size:.9rem}
 .manual input{flex:1;min-width:0;font:500 1rem "IBM Plex Mono",monospace;padding:12px;border-radius:8px;
   border:1px solid var(--line);background:var(--surface);color:var(--ink)}
 .status{min-height:1.5em;color:var(--muted);font-size:.9rem;margin:6px 0 16px}
@@ -94,10 +100,20 @@ h2{font-size:1.05rem;margin:22px 0 8px}
   </div>
 
   <form class="manual" id="formManual" onsubmit="return false">
-    <input id="manual" inputmode="text" autocomplete="off" placeholder="Ou digite/cole a chave (44 posições)" aria-label="Chave de acesso">
+    <input id="manual" inputmode="text" autocomplete="off" placeholder="Digite ou cole a chave (44 posições)" aria-label="Chave de acesso">
     <button id="btnOk" type="button">Ver</button>
   </form>
   <div class="status" id="status" role="status"></div>
+
+  <section id="xmlbox" class="card">
+    <strong>Dados completos (XML)</strong>
+    <p class="note" style="margin:4px 0 10px">Nome, município, natureza da operação, transportador, placa e valor não estão no código de barras. Carregue o XML da nota para preencher tudo.</p>
+    <div class="two">
+      <label class="btn file">Abrir arquivo XML<input type="file" id="xmlFile" accept=".xml,text/xml,application/xml"></label>
+      <button id="btnXmlCola" type="button">Colar XML</button>
+    </div>
+    <textarea id="xmlTxt" hidden placeholder="Cole aqui o conteúdo do XML"></textarea>
+  </section>
 
   <section id="result" aria-live="polite">
     <div class="key">
@@ -145,6 +161,62 @@ function fmtDoc(d){
 }
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 
+let xmlDados=null;
+
+function limparChave(v){return String(v||"").toUpperCase().replace(/[^0-9A-Z]/g,"").slice(0,44);}
+
+/* ---- XML: extrai os campos que não existem no código de barras ---- */
+function tag(no,nome){if(!no)return null;const l=no.getElementsByTagName?no.getElementsByTagName(nome):[];
+  if(l.length)return l[0];
+  const t=no.getElementsByTagNameNS?no.getElementsByTagNameNS("*",nome):[];return t.length?t[0]:null;}
+function txt(no,nome){const e=tag(no,nome);return e&&e.textContent?e.textContent.trim():"";}
+function fmtDH(v){
+  if(!v)return "";
+  const m=v.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2}))?/);
+  if(!m)return v;
+  return `${m[3]}/${m[2]}/${m[1]}`+(m[4]?` às ${m[4]}:${m[5]}:${m[6]}`:"");
+}
+function fmtMoeda(v){const n=Number(v);return isFinite(n)&&v!==""?n.toLocaleString("pt-BR",{style:"currency",currency:"BRL"}):"";}
+function docFmt(cnpj,cpf){
+  if(cnpj)return fmtDoc(cnpj.padStart(14,"0")).txt;
+  if(cpf)return `${cpf.slice(0,3)}.${cpf.slice(3,6)}.${cpf.slice(6,9)}-${cpf.slice(9)}`;
+  return "";
+}
+function lerXml(conteudo){
+  let doc;
+  try{doc=new DOMParser().parseFromString(conteudo,"text/xml");}catch(e){return null;}
+  if(!doc||doc.getElementsByTagName("parsererror").length)return null;
+  const inf=tag(doc,"infNFe")||tag(doc,"infCte")||tag(doc,"infMDFe");
+  if(!inf)return null;
+  const ide=tag(inf,"ide"),emit=tag(inf,"emit"),dest=tag(inf,"dest"),transp=tag(inf,"transp");
+  const ender=e=>tag(e,"enderEmit")||tag(e,"enderDest")||tag(e,"ender");
+  const id=(inf.getAttribute("Id")||"").replace(/\D/g,"");
+  const veic=transp?(tag(transp,"veicTransp")||tag(transp,"reboque")):null;
+  const transporta=transp?tag(transp,"transporta"):null;
+  return {
+    chave:id.length===44?id:null,
+    natOp:txt(ide,"natOp"),
+    dhEmi:fmtDH(txt(ide,"dhEmi")||txt(ide,"dEmi")),
+    emitNome:txt(emit,"xNome"),
+    emitDoc:docFmt(txt(emit,"CNPJ"),txt(emit,"CPF")),
+    emitMun:emit?`${txt(ender(emit),"xMun")}${txt(ender(emit),"UF")?" / "+txt(ender(emit),"UF"):""}`:"",
+    destNome:txt(dest,"xNome"),
+    destDoc:docFmt(txt(dest,"CNPJ"),txt(dest,"CPF")),
+    destMun:dest?`${txt(ender(dest),"xMun")}${txt(ender(dest),"UF")?" / "+txt(ender(dest),"UF"):""}`:"",
+    transportador:transporta?(txt(transporta,"xNome")||docFmt(txt(transporta,"CNPJ"),txt(transporta,"CPF"))):"",
+    placa:veic?`${txt(veic,"placa")}${txt(veic,"UF")?" / "+txt(veic,"UF"):""}`.trim():"",
+    vNF:fmtMoeda(txt(tag(inf,"ICMSTot"),"vNF")),
+  };
+}
+function aplicarXml(conteudo){
+  const d=lerXml(conteudo);
+  if(!d){status("Não consegui ler esse XML. Confira se é o arquivo da nota (procNFe/nfeProc).",true);return;}
+  xmlDados=d;
+  if(d.chave){mostrar(d.chave);status("XML carregado — campos completos preenchidos.");}
+  else if(current){mostrar(current);status("XML carregado.");}
+  else status("XML carregado, mas sem chave de acesso. Leia o código de barras também.",true);
+}
+
 function mostrar(ch){
   current=ch;
   const p={uf:ch.slice(0,2),aa:ch.slice(2,4),mm:ch.slice(4,6),doc:ch.slice(6,20),mod:ch.slice(20,22),
@@ -154,43 +226,55 @@ function mostrar(ch){
   const dvEl=$("kDv");
   dvEl.textContent=dvOk?"Dígito verificador confere":"Dígito verificador não confere — chave inválida ou mal lida";
   dvEl.className="dv "+(dvOk?"ok":"bad");
-  const doc=fmtDoc(p.doc), mm=Number(p.mm);
-  const nnf=Number(p.nnf).toLocaleString("pt-BR");
-  const rows=[
-    ["Documento",MOD[p.mod]||`Modelo ${p.mod}`],
-    ["UF do emitente",UF[+p.uf]?`${UF[+p.uf]} (código ${p.uf})`:`Código ${p.uf}`],
-    ["Emissão",(mm>=1&&mm<=12)?`${MES[mm-1]}/20${p.aa}`:`${p.mm}/20${p.aa}`],
-    [`${doc.tipo} do emitente`,doc.txt],
-    ["Série",String(Number(p.serie))],
-    ["Número",nnf],
-    ["Forma de emissão",EMIS[p.tpEmis]||p.tpEmis],
-    ["Código numérico",p.cnf],
-  ];
-  $("kData").innerHTML=rows.map(r=>`<div><dt>${esc(r[0])}</dt><dd>${esc(r[1])}</dd></div>`).join("");
 
-  const cnpjLimpo=p.doc;
+  const x=(xmlDados&&(!xmlDados.chave||xmlDados.chave===ch))?xmlDados:null;
+  const docEmit=fmtDoc(p.doc), mm=Number(p.mm);
+  const comp=(mm>=1&&mm<=12)?`${MES[mm-1]}/20${p.aa}`:`${p.mm}/20${p.aa}`;
+  const linhas=[
+    ["Documento",(MOD[p.mod]||`Modelo ${p.mod}`)+(p.tpEmis!=="1"?` — ${EMIS[p.tpEmis]||""}`:"")],
+    ["UF do emitente",UF[+p.uf]?`${UF[+p.uf]} (código ${p.uf})`:`Código ${p.uf}`],
+    ["Série",String(Number(p.serie))],
+    ["Número",Number(p.nnf).toLocaleString("pt-BR")],
+    ["Emissão",x&&x.dhEmi?x.dhEmi:`${comp} (data exata só no XML)`],
+    ["Natureza da operação",x?x.natOp:""],
+    ["Nome do emitente",x?x.emitNome:""],
+    [`${docEmit.tipo} do emitente`,docEmit.txt],
+    ["Município do emitente",x?x.emitMun:""],
+    ["Nome do destinatário",x?x.destNome:""],
+    ["CPF ou CNPJ do destinatário",x?x.destDoc:""],
+    ["Município do destinatário",x?x.destMun:""],
+    ["Transportador",x?x.transportador:""],
+    ["Placa",x?x.placa:""],
+    ["Valor total da nota",x?x.vNF:""],
+  ];
+  $("kData").innerHTML=linhas.map(l=>{
+    const v=l[1];
+    return `<div><dt>${esc(l[0])}</dt>${v?`<dd>${esc(v)}</dd>`:`<dd class="vazio">— carregue o XML</dd>`}</div>`;
+  }).join("");
+
   const links=[];
   if(p.mod==="55"){
-    links.push(["Portal Nacional da NF-e (consulta completa)","https://www.nfe.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=completa&tipoConteudo=XbSeqxE8pl8="]);
-    links.push(["Portal Nacional da NF-e (consulta resumo)","https://www.nfe.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=resumo&tipoConteudo=7PhJ+gAVw2g="]);
+    links.push(["Consulta completa — Portal Nacional NF-e","https://www.nfe.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=completa&tipoConteudo=XbSeqxE8pl8="]);
+    links.push(["Consulta resumo — Portal Nacional NF-e","https://www.nfe.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=resumo&tipoConteudo=7PhJ+gAVw2g="]);
   } else if(p.mod==="57"||p.mod==="67"){
-    links.push(["Portal do CT-e (consulta)","https://www.cte.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=completa&tipoConteudo=mCK/KoCqru0="]);
+    links.push(["Consulta CT-e","https://www.cte.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=completa&tipoConteudo=mCK/KoCqru0="]);
   } else if(p.mod==="58"){
-    links.push(["Portal do MDF-e (consulta)","https://dfe-portal.svrs.rs.gov.br/MDFE/Consulta"]);
+    links.push(["Consulta MDF-e","https://dfe-portal.svrs.rs.gov.br/MDFE/Consulta"]);
   } else if(p.mod==="65"){
-    links.push(["Consulta NFC-e (portal da UF emitente)","https://www.nfce.fazenda.gov.br/portal/consultaRecaptcha.aspx"]);
+    links.push(["Consulta NFC-e","https://www.nfce.fazenda.gov.br/portal/consultaRecaptcha.aspx"]);
   }
-  if(doc.tipo==="CNPJ" && /^\d{14}$/.test(cnpjLimpo)){
-    links.push(["Dados do emitente (CNPJ)",`https://casadosdados.com.br/solucao/cnpj?q=${cnpjLimpo}`]);
-  }
-  $("links").innerHTML=links.map(l=>`<a class="btn" href="${esc(l[1])}" target="_blank" rel="noopener">${esc(l[0])}</a>`).join("")
-    +`<p class="note">No portal, toque em “Copiar chave” acima e cole no campo da consulta.</p>`;
+  if(docEmit.tipo==="CNPJ"&&/^\d{14}$/.test(p.doc))
+    links.push(["Dados do emitente (CNPJ)",`https://casadosdados.com.br/solucao/cnpj?q=${p.doc}`]);
+  $("links").innerHTML=links.map(l=>`<a class="btn" href="${esc(l[1])}" target="_blank" rel="noopener" data-copiar="1">${esc(l[0])}</a>`).join("")
+    +`<p class="note">Ao tocar num link, a chave já vai copiada — no portal é só tocar no campo e colar. O portal exige captcha, então ninguém consegue preencher por você.</p>`;
+  $("links").querySelectorAll("a[data-copiar]").forEach(a=>a.addEventListener("click",()=>{
+    try{navigator.clipboard.writeText(current);}catch(e){}
+  }));
 
   const r=$("result");r.style.display="block";r.classList.remove("show");void r.offsetWidth;r.classList.add("show");
-  salvarHist(ch,`${MOD[p.mod]?MOD[p.mod].split(" ")[0]:"Mod "+p.mod} nº ${nnf} — ${doc.txt}`);
+  salvarHist(ch,`${MOD[p.mod]||("Mod "+p.mod)} nº ${Number(p.nnf).toLocaleString("pt-BR")} — ${docEmit.txt}`);
   r.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
 }
-
 function processar(txt){
   const ch=extrairChave(txt);
   if(!ch){status("Não encontrei uma chave de acesso de 44 posições nessa leitura. Tente de novo, com o código mais centralizado.",true);return false;}
@@ -295,7 +379,17 @@ $("foto").onchange=async e=>{
   }catch(err){status("Não consegui ler a foto. Tente outra, mais nítida.",true);}
   e.target.value="";
 };
+$("manual").addEventListener("input",e=>{const v=limparChave(e.target.value);
+  if(v!==e.target.value)e.target.value=v;
+  if(v.length===44)processar(v);});
 $("btnOk").onclick=()=>processar($("manual").value);
+$("xmlFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;
+  try{aplicarXml(await f.text());}catch(err){status("Não consegui abrir o arquivo.",true);}
+  e.target.value="";};
+$("btnXmlCola").onclick=()=>{const t=$("xmlTxt");
+  if(t.hidden){t.hidden=false;t.focus();$("btnXmlCola").textContent="Usar este XML";}
+  else{aplicarXml(t.value);}};
+$("xmlTxt").addEventListener("paste",()=>setTimeout(()=>aplicarXml($("xmlTxt").value),50));
 $("manual").addEventListener("keydown",e=>{if(e.key==="Enter")processar($("manual").value);});
 $("btnCopy").onclick=async()=>{
   try{await navigator.clipboard.writeText(current);$("btnCopy").textContent="Chave copiada";}
