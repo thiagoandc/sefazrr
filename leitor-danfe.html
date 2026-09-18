@@ -3,93 +3,79 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Leitor de DF-e — abordagem</title>
-<link rel="manifest" href="./manifest.webmanifest">
-<meta name="theme-color" content="#0E4A54">
-<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Leitor de DANFE</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/zxing-wasm@3.1.4/dist/iife/reader/index.js"></script>
 <style>
 :root{
   --bg:#F3F6F7; --surface:#FFFFFF; --ink:#102A2E; --muted:#5B6B6E; --line:#D5DDDF;
-  --petrol:#0E4A54; --petrol-ink:#FFFFFF; --mark:#F2B84B; --ok:#1E7A4F; --bad:#B3261E; --warn:#9A5B00;
-  --warnbg:#FDF3E0; --badbg:#FBECEA;
+  --petrol:#0E4A54; --petrol-ink:#FFFFFF; --mark:#F2B84B; --ok:#1E7A4F; --bad:#B3261E;
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0D1A1C; --surface:#142629; --ink:#E6EEF0; --muted:#94A7AA; --line:#284145;
-  --petrol:#5FB3BF; --petrol-ink:#08292E; --mark:#F2B84B; --ok:#5CC98F; --bad:#F2877F; --warn:#F2B84B;
-  --warnbg:#2A2214; --badbg:#2E1A18;}}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1A1C; --surface:#142629; --ink:#E6EEF0; --muted:#94A7AA; --line:#284145;
+    --petrol:#5FB3BF; --petrol-ink:#08292E; --mark:#F2B84B; --ok:#5CC98F; --bad:#F2877F;
+  }
+}
 :root[data-theme="dark"]{
   --bg:#0D1A1C; --surface:#142629; --ink:#E6EEF0; --muted:#94A7AA; --line:#284145;
-  --petrol:#5FB3BF; --petrol-ink:#08292E; --mark:#F2B84B; --ok:#5CC98F; --bad:#F2877F; --warn:#F2B84B;
-  --warnbg:#2A2214; --badbg:#2E1A18;}
+  --petrol:#5FB3BF; --petrol-ink:#08292E; --mark:#F2B84B; --ok:#5CC98F; --bad:#F2877F;
+}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "IBM Plex Sans",system-ui,-apple-system,sans-serif}
-main{max-width:600px;margin:0 auto;padding:18px 16px 56px}
-h1{font-size:1.35rem;margin:2px 0;font-weight:600}
-h2{font-size:1.02rem;margin:24px 0 8px}
-.sub{color:var(--muted);margin:2px 0 16px;font-size:.92rem}
-.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
-label.f{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
-input[type=text]{width:100%;font:500 1rem "IBM Plex Mono",monospace;padding:11px;border-radius:8px;
-  border:1px solid var(--line);background:var(--bg);color:var(--ink)}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-button,.btn{font:inherit;font-weight:600;border-radius:8px;padding:12px 14px;border:1px solid var(--line);
-  background:var(--surface);color:var(--ink);cursor:pointer;text-align:center;text-decoration:none;display:block;width:100%}
-button.primary{background:var(--petrol);color:var(--petrol-ink);border-color:var(--petrol);font-size:1.05rem;padding:15px}
-button:disabled{opacity:.45}
-.actions{display:grid;gap:10px;margin:12px 0}
-label.file{position:relative}
-label.file input{position:absolute;inset:0;opacity:0}
-#reader{display:none;position:relative;border-radius:10px;overflow:hidden;background:#000;margin-bottom:10px}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.5 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;}
+main{max-width:560px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.5rem;line-height:1.2;margin:4px 0 4px;font-weight:600}
+.sub{color:var(--muted);margin:0 0 20px;font-size:.95rem}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
+#reader{width:100%;border-radius:10px;overflow:hidden;background:#000;display:none}
+#reader{position:relative}
 #reader video{width:100%;display:block}
-.guide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.guide{position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center}
 .guide span{width:94%;height:34%;border:2px solid var(--mark);border-radius:6px;box-shadow:0 0 0 999px rgba(0,0,0,.35)}
-.camtools{position:absolute;left:0;right:0;bottom:0;display:flex;gap:10px;align-items:center;padding:8px;
-  background:linear-gradient(transparent,rgba(0,0,0,.6))}
-.camtools button{width:auto;padding:8px 12px;background:rgba(0,0,0,.5);color:#fff;border-color:rgba(255,255,255,.4)}
-.camtools label{display:flex;gap:8px;align-items:center;flex:1;justify-content:flex-end;color:#fff;font-size:.85rem}
+.camtools{position:absolute;left:0;right:0;bottom:0;display:flex;gap:10px;align-items:center;justify-content:space-between;padding:8px;background:linear-gradient(transparent,rgba(0,0,0,.6));color:#fff}
+.camtools button{padding:8px 12px;background:rgba(0,0,0,.5);color:#fff;border-color:rgba(255,255,255,.4)}
+.camtools label{display:flex;gap:8px;align-items:center;flex:1;justify-content:flex-end;font-size:.9rem}
 .camtools input{width:55%}
-.status{min-height:1.4em;color:var(--muted);font-size:.88rem;margin:8px 0}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+button,.btn{font:inherit;font-weight:600;border-radius:8px;padding:13px 14px;border:1px solid var(--line);
+  background:var(--surface);color:var(--ink);cursor:pointer;text-align:center;text-decoration:none;display:block}
+button.primary{background:var(--petrol);color:var(--petrol-ink);border-color:var(--petrol);grid-column:1/-1;font-size:1.05rem;padding:16px}
+button:focus-visible,.btn:focus-visible,input:focus-visible{outline:3px solid var(--mark);outline-offset:2px}
+label.file{position:relative}
+label.file input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.manual{display:flex;gap:8px;margin:4px 0 8px}
+.manual input{flex:1;min-width:0;font:500 1rem "IBM Plex Mono",monospace;padding:12px;border-radius:8px;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.status{min-height:1.5em;color:var(--muted);font-size:.9rem;margin:6px 0 16px}
 .status.err{color:var(--bad)}
-.doc{border:1px solid var(--line);border-left:6px solid var(--line);border-radius:10px;background:var(--surface);
-  padding:13px;margin-bottom:10px}
-.doc.alto{border-left-color:var(--bad);background:var(--badbg)}
-.doc.atencao{border-left-color:var(--mark);background:var(--warnbg)}
-.doc h3{margin:0 0 2px;font-size:1rem}
-.doc .meta{color:var(--muted);font-size:.87rem}
-.doc .chave{font-size:.8rem;margin-top:6px;word-break:break-all;color:var(--muted)}
-.sig{margin:8px 0 0;padding:0;list-style:none;font-size:.88rem}
-.sig li{padding:3px 0 3px 18px;position:relative}
-.sig li::before{content:"";position:absolute;left:0;top:11px;width:8px;height:8px;border-radius:50%;background:var(--muted)}
-.sig li.alto::before{background:var(--bad)} .sig li.atencao::before{background:var(--mark)}
-.sig li.alto{color:var(--bad);font-weight:600} .sig li.atencao{color:var(--warn)}
-.doc .rm{margin-top:8px;width:auto;padding:6px 10px;font-size:.82rem;font-weight:500}
-dl{margin:8px 0 0;font-size:.9rem}
-dl div{display:grid;grid-template-columns:42% 58%;gap:6px;padding:6px 0;border-top:1px solid var(--line)}
-dt{color:var(--muted)} dd{margin:0;font-weight:500;word-break:break-word}
-.note{font-size:.83rem;color:var(--muted);margin:8px 0 0}
-pre{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;overflow-x:auto;
-  font:500 .78rem/1.5 "IBM Plex Mono",monospace;margin:0 0 8px}
-details summary{cursor:pointer;font-weight:600;padding:10px 0}
-.empty{color:var(--muted);font-size:.9rem}
-.bar{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px}
-.count{font-weight:600}
+#result{display:none}
+.key{background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--mark);
+  border-radius:8px;padding:16px;margin-bottom:14px}
+.key .groups{font-size:1.12rem;letter-spacing:.02em;word-spacing:.3em;line-height:1.7;word-break:break-word}
+.key .dv{margin-top:8px;font-size:.9rem;font-weight:600}
+.dv.ok{color:var(--ok)} .dv.bad{color:var(--bad)}
+.key .copy{margin-top:12px;width:100%}
+dl{margin:0 0 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+dl div{display:grid;grid-template-columns:40% 60%;gap:8px;padding:11px 14px;border-top:1px solid var(--line)}
+dl div:first-child{border-top:0}
+dt{color:var(--muted);font-size:.9rem}
+dd{margin:0;font-weight:500;word-break:break-word}
+h2{font-size:1.05rem;margin:22px 0 8px}
+.links{display:grid;gap:8px}
+.note{font-size:.85rem;color:var(--muted);margin:10px 0 0}
+.hist{list-style:none;padding:0;margin:0}
+.hist li button{width:100%;text-align:left;font-weight:400;margin-bottom:6px;padding:10px 12px}
+.hist small{display:block;color:var(--muted)}
+@media (prefers-reduced-motion: no-preference){ #result.show{animation:in .25s ease-out} }
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 </style>
 </head>
 <body>
 <main>
-  <h1>Leitor de DF-e</h1>
-  <p class="sub">Abordagem de trânsito — leitura, sinais de risco e resumo. Funciona sem sinal.</p>
-
-  <div class="card">
-    <div class="two">
-      <div><label class="f" for="placa">Placa</label><input type="text" id="placa" placeholder="ABC1D23" autocapitalize="characters" autocomplete="off"></div>
-      <div><label class="f" for="cond">Condutor / obs.</label><input type="text" id="cond" placeholder="opcional" autocomplete="off"></div>
-    </div>
-  </div>
+  <h1>Leitor de DANFE</h1>
+  <p class="sub">Aponte a câmera para o código de barras ou o QR Code do documento fiscal.</p>
 
   <div id="reader">
     <video id="video" playsinline muted></video>
@@ -99,270 +85,240 @@ details summary{cursor:pointer;font-weight:600;padding:10px 0}
       <label id="zoomWrap" hidden>Zoom <input type="range" id="zoom"></label>
     </div>
   </div>
-
   <div class="actions">
     <button class="primary" id="btnCam">Abrir câmera</button>
-    <div class="two">
-      <label class="btn file">Ler de uma foto<input type="file" id="foto" accept="image/*" capture="environment"></label>
-      <button id="btnStop" disabled>Parar câmera</button>
-    </div>
-    <div class="two">
-      <input type="text" id="manual" placeholder="Digitar / colar chave" aria-label="Chave de acesso">
-      <button id="btnOk">Adicionar</button>
-    </div>
+    <label class="btn file">Ler de uma foto
+      <input type="file" id="foto" accept="image/*" capture="environment">
+    </label>
+    <button id="btnStop" disabled>Parar câmera</button>
   </div>
+
+  <form class="manual" id="formManual" onsubmit="return false">
+    <input id="manual" inputmode="text" autocomplete="off" placeholder="Ou digite/cole a chave (44 posições)" aria-label="Chave de acesso">
+    <button id="btnOk" type="button">Ver</button>
+  </form>
   <div class="status" id="status" role="status"></div>
 
-  <h2>Documentos da abordagem</h2>
-  <div class="bar"><span class="count" id="count">Nenhum documento</span><button id="btnNova" style="width:auto;padding:8px 12px;font-size:.85rem">Nova abordagem</button></div>
-  <div id="lista"><p class="empty">Leia o código de barras ou o QR Code dos documentos. Tudo fica salvo só neste aparelho.</p></div>
+  <section id="result" aria-live="polite">
+    <div class="key">
+      <div class="groups mono" id="kGroups"></div>
+      <div class="dv" id="kDv"></div>
+      <button class="copy" id="btnCopy">Copiar chave</button>
+    </div>
+    <dl id="kData"></dl>
+    <h2>Consultar o documento completo</h2>
+    <div class="links" id="links"></div>
+    <p class="note">Itens, valores e destinatário não estão no código de barras — ele carrega só a chave de acesso. Os demais dados vêm da consulta no portal ou do XML.</p>
+  </section>
 
-  <h2>Resumo</h2>
-  <div class="two">
-    <button id="btnResumo">Copiar resumo</button>
-    <button id="btnCsv">Baixar CSV</button>
-  </div>
-
-  <details id="detSql">
-    <summary>Consultas SIATE (colar no cliente Oracle)</summary>
-    <div id="sql"></div>
-    <p class="note">Gerado localmente, só com as chaves lidas. Confira os joins do MDF-e antes de usar em produção.</p>
-  </details>
-
-  <details>
-    <summary>Sobre os sinais e os limites</summary>
-    <p class="note">Os sinais saem apenas do que está dentro da própria chave de acesso (modelo, forma de emissão, competência, emitente, DV) e do conjunto lido nesta abordagem. Não há consulta a SEFAZ: situação do documento, eventos, cancelamento, valores, itens e vínculo com MDF-e/CT-e dependem de backend com certificado digital ou de acesso ao SIATE.</p>
-  </details>
+  <h2>Leituras recentes</h2>
+  <ul class="hist" id="hist"></ul>
+  <button id="btnClear" style="margin-top:6px">Limpar histórico</button>
 </main>
 
 <script>
-/* ---------- utilidades de chave ---------- */
+
 const UF={11:"RO",12:"AC",13:"AM",14:"RR",15:"PA",16:"AP",17:"TO",21:"MA",22:"PI",23:"CE",24:"RN",25:"PB",26:"PE",27:"AL",28:"SE",29:"BA",31:"MG",32:"ES",33:"RJ",35:"SP",41:"PR",42:"SC",43:"RS",50:"MS",51:"MT",52:"GO",53:"DF"};
-const MOD={"55":"NF-e","65":"NFC-e","57":"CT-e","67":"CT-e OS","58":"MDF-e","63":"BP-e","66":"NF3e","62":"NFCom"};
-const EMIS={"1":"Normal","2":"Contingência FS-IA","3":"Contingência SCAN","4":"Contingência EPEC","5":"Contingência FS-DA","6":"Contingência SVC-AN","7":"Contingência SVC-RS","8":"Contingência SVC-SP","9":"Contingência off-line"};
+const MOD={"55":"NF-e (modelo 55)","65":"NFC-e (modelo 65)","57":"CT-e (modelo 57)","67":"CT-e OS (modelo 67)","58":"MDF-e (modelo 58)","63":"BP-e (modelo 63)","66":"NF3e (modelo 66)","62":"NFCom (modelo 62)"};
+const EMIS={"1":"Normal","2":"Contingência FS-IA","3":"Contingência SCAN","4":"Contingência EPEC","5":"Contingência FS-DA","6":"Contingência SVC-AN","7":"Contingência SVC-RS","8":"Contingência SVC-SP","9":"Contingência off-line (NFC-e)"};
 const MES=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
 const $=id=>document.getElementById(id);
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let scanner=null, current="";
 
+function status(msg,err){const s=$("status");s.textContent=msg||"";s.className="status"+(err?" err":"");}
+
+// Extrai a chave de qualquer texto lido (código de barras, URL do QR Code da NFC-e etc.)
 function extrairChave(txt){
-  const t=String(txt||"").toUpperCase().replace(/[\s.]/g,"");
+  const t=String(txt||"").toUpperCase().replace(/\s|\./g,"");
   const m=t.match(/\d{6}[0-9A-Z]{12}\d{2}\d{2}\d{3}\d{9}\d\d{8}\d/);
   return m?m[0]:null;
 }
-function calcDV(k43){let s=0,p=2;for(let i=k43.length-1;i>=0;i--){s+=(k43.charCodeAt(i)-48)*p;p=p===9?2:p+1;}const r=s%11;return r<2?0:11-r;}
+// DV módulo 11 (aceita CNPJ alfanumérico: valor = código ASCII − 48)
+function calcDV(k43){
+  let soma=0,peso=2;
+  for(let i=k43.length-1;i>=0;i--){soma+=(k43.charCodeAt(i)-48)*peso;peso=peso===9?2:peso+1;}
+  const r=soma%11;return r<2?0:11-r;
+}
 function fmtDoc(d){
-  if(/^000\d{11}$/.test(d)){const c=d.slice(3);return{tipo:"CPF",txt:`${c.slice(0,3)}.${c.slice(3,6)}.${c.slice(6,9)}-${c.slice(9)}`};}
-  return{tipo:"CNPJ",txt:`${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12)}`};
+  if(/^000\d{11}$/.test(d)){const c=d.slice(3);return {tipo:"CPF",txt:`${c.slice(0,3)}.${c.slice(3,6)}.${c.slice(6,9)}-${c.slice(9)}`};}
+  return {tipo:"CNPJ",txt:`${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12)}`};
 }
-function analisar(ch){
-  const p={ch,uf:ch.slice(0,2),aa:ch.slice(2,4),mm:ch.slice(4,6),doc:ch.slice(6,20),mod:ch.slice(20,22),
-    serie:String(Number(ch.slice(22,25))),nnf:Number(ch.slice(25,34)),tpEmis:ch.slice(34,35),
-    cnf:ch.slice(35,43),dv:ch.slice(43)};
-  p.dvOk=calcDV(ch.slice(0,43))===Number(p.dv);
-  p.modelo=MOD[p.mod]||("Modelo "+p.mod);
-  p.uf_sigla=UF[+p.uf]||p.uf;
-  p.emitente=fmtDoc(p.doc);
-  const mm=Number(p.mm);
-  p.comp=(mm>=1&&mm<=12)?`${MES[mm-1]}/20${p.aa}`:`${p.mm}/20${p.aa}`;
-  p.meses=(()=>{const h=new Date();const a=2000+Number(p.aa);
-    return (h.getFullYear()-a)*12+(h.getMonth()+1-mm);})();
-  return p;
-}
-/* ---------- sinais de risco (offline) ---------- */
-function sinais(p,lista){
-  const s=[];
-  if(!p.dvOk) s.push(["alto","Dígito verificador não confere — chave inválida ou lida errado"]);
-  if(p.tpEmis!=="1") s.push(["atencao",`Emitido em contingência — ${EMIS[p.tpEmis]||p.tpEmis}`]);
-  if(p.meses<0) s.push(["alto","Competência no futuro — chave inconsistente"]);
-  else if(p.meses>=3) s.push(["alto",`Documento de ${p.comp} — ${p.meses} meses em circulação`]);
-  else if(p.meses===2) s.push(["atencao",`Documento de ${p.comp} — competência antiga`]);
-  if(p.mod==="65") s.push(["atencao","NFC-e não acoberta transporte interestadual de mercadoria"]);
-  if(p.emitente.tipo==="CPF") s.push(["info","Emitente pessoa física (produtor rural / avulsa)"]);
-  if(p.uf_sigla!=="RR"&&["55","65"].includes(p.mod)) s.push(["info",`Emitente de ${p.uf_sigla} — operação interestadual`]);
-  if(lista.filter(x=>x.ch===p.ch).length>1) s.push(["atencao","Chave repetida nesta abordagem"]);
-  const irmaos=lista.filter(x=>x.doc===p.doc&&x.serie===p.serie&&x.ch!==p.ch);
-  if(irmaos.length&&irmaos.some(x=>Math.abs(x.nnf-p.nnf)<=3)) s.push(["info","Numeração sequencial do mesmo emitente (mesmo lote)"]);
-  return s;
-}
-const nivel=s=>s.some(x=>x[0]==="alto")?"alto":(s.some(x=>x[0]==="atencao")?"atencao":"");
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 
-/* ---------- sessão ---------- */
-let sessao=carregar();
-function carregar(){try{return JSON.parse(localStorage.getItem("abordagem")||"null")||novaSessao();}catch(e){return novaSessao();}}
-function novaSessao(){return{inicio:Date.now(),placa:"",cond:"",docs:[]};}
-function salvar(){try{localStorage.setItem("abordagem",JSON.stringify(sessao));}catch(e){}}
-function status(m,e){const s=$("status");s.textContent=m||"";s.className="status"+(e?" err":"");}
+function mostrar(ch){
+  current=ch;
+  const p={uf:ch.slice(0,2),aa:ch.slice(2,4),mm:ch.slice(4,6),doc:ch.slice(6,20),mod:ch.slice(20,22),
+    serie:ch.slice(22,25),nnf:ch.slice(25,34),tpEmis:ch.slice(34,35),cnf:ch.slice(35,43),dv:ch.slice(43)};
+  const dvOk=calcDV(ch.slice(0,43))===Number(p.dv);
+  $("kGroups").textContent=ch.match(/.{1,4}/g).join(" ");
+  const dvEl=$("kDv");
+  dvEl.textContent=dvOk?"Dígito verificador confere":"Dígito verificador não confere — chave inválida ou mal lida";
+  dvEl.className="dv "+(dvOk?"ok":"bad");
+  const doc=fmtDoc(p.doc), mm=Number(p.mm);
+  const nnf=Number(p.nnf).toLocaleString("pt-BR");
+  const rows=[
+    ["Documento",MOD[p.mod]||`Modelo ${p.mod}`],
+    ["UF do emitente",UF[+p.uf]?`${UF[+p.uf]} (código ${p.uf})`:`Código ${p.uf}`],
+    ["Emissão",(mm>=1&&mm<=12)?`${MES[mm-1]}/20${p.aa}`:`${p.mm}/20${p.aa}`],
+    [`${doc.tipo} do emitente`,doc.txt],
+    ["Série",String(Number(p.serie))],
+    ["Número",nnf],
+    ["Forma de emissão",EMIS[p.tpEmis]||p.tpEmis],
+    ["Código numérico",p.cnf],
+  ];
+  $("kData").innerHTML=rows.map(r=>`<div><dt>${esc(r[0])}</dt><dd>${esc(r[1])}</dd></div>`).join("");
 
-function addChave(ch){
-  const p=analisar(ch);
-  if(sessao.docs.some(d=>d.ch===ch)){status("Este documento já está na lista.");return true;}
-  sessao.docs.push(p);salvar();render();
-  if(navigator.vibrate)navigator.vibrate(80);
-  status(`${p.modelo} nº ${p.nnf.toLocaleString("pt-BR")} adicionado.`);
-  return true;
+  const cnpjLimpo=p.doc;
+  const links=[];
+  if(p.mod==="55"){
+    links.push(["Portal Nacional da NF-e (consulta completa)","https://www.nfe.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=completa&tipoConteudo=XbSeqxE8pl8="]);
+    links.push(["Portal Nacional da NF-e (consulta resumo)","https://www.nfe.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=resumo&tipoConteudo=7PhJ+gAVw2g="]);
+  } else if(p.mod==="57"||p.mod==="67"){
+    links.push(["Portal do CT-e (consulta)","https://www.cte.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=completa&tipoConteudo=mCK/KoCqru0="]);
+  } else if(p.mod==="58"){
+    links.push(["Portal do MDF-e (consulta)","https://dfe-portal.svrs.rs.gov.br/MDFE/Consulta"]);
+  } else if(p.mod==="65"){
+    links.push(["Consulta NFC-e (portal da UF emitente)","https://www.nfce.fazenda.gov.br/portal/consultaRecaptcha.aspx"]);
+  }
+  if(doc.tipo==="CNPJ" && /^\d{14}$/.test(cnpjLimpo)){
+    links.push(["Dados do emitente (CNPJ)",`https://casadosdados.com.br/solucao/cnpj?q=${cnpjLimpo}`]);
+  }
+  $("links").innerHTML=links.map(l=>`<a class="btn" href="${esc(l[1])}" target="_blank" rel="noopener">${esc(l[0])}</a>`).join("")
+    +`<p class="note">No portal, toque em “Copiar chave” acima e cole no campo da consulta.</p>`;
+
+  const r=$("result");r.style.display="block";r.classList.remove("show");void r.offsetWidth;r.classList.add("show");
+  salvarHist(ch,`${MOD[p.mod]?MOD[p.mod].split(" ")[0]:"Mod "+p.mod} nº ${nnf} — ${doc.txt}`);
+  r.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
 }
+
 function processar(txt){
   const ch=extrairChave(txt);
-  if(!ch){status("Não encontrei uma chave de 44 posições. Centralize o código e tente de novo.",true);return false;}
-  return addChave(ch);
+  if(!ch){status("Não encontrei uma chave de acesso de 44 posições nessa leitura. Tente de novo, com o código mais centralizado.",true);return false;}
+  status("Chave lida.");
+  if(navigator.vibrate) navigator.vibrate(80);
+  mostrar(ch);return true;
 }
-function render(){
-  const L=sessao.docs;
-  $("count").textContent=L.length?`${L.length} documento${L.length>1?"s":""}`:"Nenhum documento";
-  if(!L.length){$("lista").innerHTML='<p class="empty">Leia o código de barras ou o QR Code dos documentos. Tudo fica salvo só neste aparelho.</p>';$("sql").innerHTML="";return;}
-  $("lista").innerHTML=L.map((p,i)=>{
-    const s=sinais(p,L),nv=nivel(s);
-    return `<div class="doc ${nv}">
-      <h3>${esc(p.modelo)} nº ${p.nnf.toLocaleString("pt-BR")} — série ${esc(p.serie)}</h3>
-      <div class="meta">${esc(p.emitente.tipo)} ${esc(p.emitente.txt)} · ${esc(p.uf_sigla)} · ${esc(p.comp)}</div>
-      <ul class="sig">${s.map(x=>`<li class="${x[0]}">${esc(x[1])}</li>`).join("")||'<li>Sem sinais na análise local</li>'}</ul>
-      <div class="chave mono">${esc(p.ch)}</div>
-      <button class="rm" data-i="${i}">Remover</button>
-    </div>`;}).join("");
-  $("lista").querySelectorAll(".rm").forEach(b=>b.onclick=()=>{sessao.docs.splice(+b.dataset.i,1);salvar();render();});
-  montarSql();
-}
-/* ---------- SQL SIATE ---------- */
-function montarSql(){
-  const q=m=>sessao.docs.filter(d=>d.mod===m).map(d=>`'${d.ch}'`).join(",\n    ");
-  const out=[];
-  if(q("55")) out.push(`-- NF-e (mod. 55) — espelho SIATE
-SELECT NFENNOT, NFEDTEMI, NFERDOCN, NFERRAZ, NFERUF,
-       NFEDDOCN, NFEDRAZ, NFEVNOTA, NFECFOP, NFENATOP,
-       NFETPNF, NFECANC, NFESIT, NFEEMDFE, NFEECTE
-  FROM SIATE.NFEPASM
- WHERE DANF IN (
-    ${q("55")}
- );`);
-  if(q("65")) out.push(`-- NFC-e (mod. 65)
-SELECT NFCE_NR_DANF, NFCE_DT_EMISSAO, NFCE_NR_DOC_REM, NFCE_NR_DOC_DES, NFCE_CANC
-  FROM NFCE_OWNER.TB_NFCE
- WHERE NFCE_NR_DANF IN (
-    ${q("65")}
- );`);
-  const pl=($("placa").value||"").toUpperCase().replace(/[^0-9A-Z]/g,"");
-  if(pl.length>=7) out.push(`-- MDF-e pela placa (confirmar joins antes de usar)
-SELECT v.VEICTRA_PLACA, i.INID_NMDF, i.INID_SERIE, i.INID_DHEMI,
-       i.INID_UFINI, i.INID_UFFIM
-  FROM MDFE.TB_MDFE_VEICTRA v
-  JOIN MDFE.TB_MDFE_IDE i ON i.INFM_CD = v.INFM_CD   -- conferir coluna de ligação
- WHERE v.VEICTRA_PLACA = '${pl}'
-   AND i.INID_TPAMB = '1'
-   AND i.INID_DHEMI >= TRUNC(SYSDATE) - 7;`);
-  $("sql").innerHTML=out.length?out.map((s,i)=>`<pre>${esc(s)}</pre><button data-q="${i}">Copiar consulta ${i+1}</button><div style="height:10px"></div>`).join("")
-    :'<p class="note">Leia ao menos um documento ou informe a placa.</p>';
-  $("sql").querySelectorAll("button[data-q]").forEach(b=>b.onclick=async()=>{
-    try{await navigator.clipboard.writeText(out[+b.dataset.q]);b.textContent="Copiada";setTimeout(()=>b.textContent=`Copiar consulta ${+b.dataset.q+1}`,1500);}catch(e){}});
-}
-/* ---------- resumo / CSV ---------- */
-function textoResumo(){
-  const L=sessao.docs,d=new Date(sessao.inicio);
-  let t=`ABORDAGEM ${d.toLocaleDateString("pt-BR")} ${d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}\n`;
-  t+=`Placa: ${$("placa").value||"-"}   Condutor/obs.: ${$("cond").value||"-"}\n`;
-  t+=`Documentos: ${L.length}\n\n`;
-  L.forEach((p,i)=>{
-    const s=sinais(p,L);
-    t+=`${i+1}) ${p.modelo} ${p.nnf} série ${p.serie} — ${p.emitente.tipo} ${p.emitente.txt} — ${p.uf_sigla} — ${p.comp}\n`;
-    t+=`   ${p.ch}\n`;
-    s.filter(x=>x[0]!=="info").forEach(x=>{t+=`   [${x[0]==="alto"?"ALTO":"ATENÇÃO"}] ${x[1]}\n`;});
-  });
-  t+=`\nSinais gerados por análise local da chave. Confirmar em consulta ao SIATE / portal.`;
-  return t;
-}
-$("btnResumo").onclick=async()=>{
-  try{await navigator.clipboard.writeText(textoResumo());$("btnResumo").textContent="Resumo copiado";}
-  catch(e){$("btnResumo").textContent="Não consegui copiar";}
-  setTimeout(()=>$("btnResumo").textContent="Copiar resumo",1600);
-};
-$("btnCsv").onclick=()=>{
-  const L=sessao.docs;
-  const linhas=[["placa","modelo","numero","serie","emitente_doc","emitente_tipo","uf","competencia","chave","dv_ok","tp_emis","sinais"]];
-  L.forEach(p=>linhas.push([$("placa").value,p.modelo,p.nnf,p.serie,p.doc,p.emitente.tipo,p.uf_sigla,p.comp,p.ch,p.dvOk?"S":"N",p.tpEmis,
-    sinais(p,L).map(x=>x[1]).join(" | ")]));
-  const csv="\uFEFF"+linhas.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(";")).join("\n");
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
-  a.download=`abordagem-${new Date().toISOString().slice(0,16).replace(/[:T]/g,"")}.csv`;
-  a.click();setTimeout(()=>URL.revokeObjectURL(a.href),3000);
-};
-$("btnNova").onclick=()=>{
-  if(sessao.docs.length&&!confirm("Encerrar esta abordagem e começar outra? Copie o resumo antes, se precisar."))return;
-  sessao=novaSessao();$("placa").value="";$("cond").value="";salvar();render();status("");
-};
-$("placa").oninput=()=>{sessao.placa=$("placa").value;salvar();montarSql();};
-$("cond").oninput=()=>{sessao.cond=$("cond").value;salvar();};
 
-/* ---------- leitura ---------- */
-const OPC={formats:["Code128","QRCode","ITF"],tryHarder:true,tryRotate:true,maxNumberOfSymbols:1};
-let stream=null,track=null,loop=null,ocupado=false,bd=null,frame=0,torch=false;
-const canvas=document.createElement("canvas"),ctx=canvas.getContext("2d",{willReadFrequently:true});
-(async()=>{try{if("BarcodeDetector" in window){const f=await BarcodeDetector.getSupportedFormats();
-  if(f.includes("code_128"))bd=new BarcodeDetector({formats:["code_128","qr_code","itf"].filter(x=>f.includes(x))});}}catch(e){}})();
+const OPC={formats:["Code128","QRCode","ITF"],tryHarder:true,tryRotate:true,tryInvert:false,maxNumberOfSymbols:1};
+let stream=null,track=null,loopTimer=null,ocupado=false,bd=null,frame=0;
+const canvas=document.createElement("canvas");
+const ctx=canvas.getContext("2d",{willReadFrequently:true});
 
-async function decodificar(cv){
-  if(bd){try{for(const r of await bd.detect(cv))if(extrairChave(r.rawValue))return r.rawValue;}catch(e){}}
+async function prepararBD(){
+  try{
+    if("BarcodeDetector" in window){
+      const f=await BarcodeDetector.getSupportedFormats();
+      if(f.includes("code_128")) bd=new BarcodeDetector({formats:["code_128","qr_code","itf"].filter(x=>f.includes(x))});
+    }
+  }catch(e){bd=null;}
+}
+prepararBD();
+
+async function decodificar(fonte){
+  // 1º: detector nativo (Android/Chrome), 2º: zxing-cpp
+  if(bd){try{const r=await bd.detect(fonte);for(const x of r){if(extrairChave(x.rawValue))return x.rawValue;}}catch(e){}}
   if(typeof ZXingWASM==="undefined")return null;
-  for(const r of await ZXingWASM.readBarcodes(ctx.getImageData(0,0,cv.width,cv.height),OPC))
-    if(r.text&&extrairChave(r.text))return r.text;
+  const img=fonte instanceof HTMLCanvasElement?ctx.getImageData(0,0,canvas.width,canvas.height):fonte;
+  const r=await ZXingWASM.readBarcodes(img,OPC);
+  for(const x of r){if(x.text&&extrairChave(x.text))return x.text;}
   return null;
 }
+
 async function tick(){
-  const v=$("video");if(!stream||ocupado||v.readyState<2)return;ocupado=true;
+  const v=$("video");
+  if(!stream||ocupado||v.readyState<2){return;}
+  ocupado=true;
   try{
-    const W=v.videoWidth,H=v.videoHeight,faixa=(frame++%3)!==2;
-    const sy=faixa?Math.floor(H*0.28):0,sh=faixa?Math.floor(H*0.44):H;
-    canvas.width=W;canvas.height=sh;ctx.drawImage(v,0,sy,W,sh,0,0,W,sh);
+    const W=v.videoWidth,H=v.videoHeight;
+    // alterna: faixa central (resolução cheia) e quadro inteiro
+    const faixa=(frame++%3)!==2;
+    const sy=faixa?Math.floor(H*0.28):0, sh=faixa?Math.floor(H*0.44):H;
+    canvas.width=W;canvas.height=sh;
+    ctx.drawImage(v,0,sy,W,sh,0,0,W,sh);
     const txt=await decodificar(canvas);
-    if(txt&&processar(txt))await pararCamera();
+    if(txt&&processar(txt)){await pararCamera();}
   }catch(e){}
   ocupado=false;
 }
+
 async function abrirCamera(){
   if(!navigator.mediaDevices?.getUserMedia){status("Este navegador não dá acesso à câmera. Use “Ler de uma foto”.",true);return;}
   await pararCamera();
-  try{stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:"environment"},width:{ideal:3840},height:{ideal:2160}}});}
-  catch(e){status(e.name==="NotAllowedError"?"Permissão da câmera negada. Libere nas configurações do site.":"A câmera não abriu. Use “Ler de uma foto”.",true);return;}
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{
+      facingMode:{ideal:"environment"},width:{ideal:3840},height:{ideal:2160}}});
+  }catch(e){
+    status(e.name==="NotAllowedError"?"Permissão da câmera negada. Libere nas configurações do site no navegador.":"A câmera não abriu. Use “Ler de uma foto”.",true);return;
+  }
   const v=$("video");v.srcObject=stream;await v.play().catch(()=>{});
   track=stream.getVideoTracks()[0];
   const cap=track.getCapabilities?track.getCapabilities():{};
-  try{if(cap.focusMode?.includes("continuous"))await track.applyConstraints({advanced:[{focusMode:"continuous"}]});}catch(e){}
+  try{if(cap.focusMode&&cap.focusMode.includes("continuous"))await track.applyConstraints({advanced:[{focusMode:"continuous"}]});}catch(e){}
   $("btnTorch").hidden=!cap.torch;
   if(cap.zoom){const z=$("zoom");z.min=cap.zoom.min;z.max=Math.min(cap.zoom.max,5);z.step=cap.zoom.step||0.1;
     z.value=track.getSettings().zoom||cap.zoom.min;$("zoomWrap").hidden=false;
     z.oninput=()=>track.applyConstraints({advanced:[{zoom:Number(z.value)}]}).catch(()=>{});}
+  else $("zoomWrap").hidden=true;
   $("reader").style.display="block";$("btnStop").disabled=false;
-  status(v.videoHeight>v.videoWidth?"Gire o celular para a horizontal — o código fica maior na imagem. Uns 20 cm de distância.":"Encaixe o código na moldura, a uns 20 cm.");
-  loop=setInterval(tick,180);
+  const vert=v.videoHeight>v.videoWidth;
+  status(vert?"Dica: gire o celular para a horizontal — o código fica maior na imagem. Mantenha uns 20 cm de distância.":"Encaixe o código na moldura, a uns 20 cm. Se desfocar, afaste um pouco.");
+  loopTimer=setInterval(tick,180);
 }
 async function pararCamera(){
-  clearInterval(loop);loop=null;
-  if(stream)stream.getTracks().forEach(t=>t.stop());
-  stream=null;track=null;torch=false;$("video").srcObject=null;$("reader").style.display="none";$("btnStop").disabled=true;
+  clearInterval(loopTimer);loopTimer=null;
+  if(stream){stream.getTracks().forEach(t=>t.stop());}
+  stream=null;track=null;torch=false;
+  $("video").srcObject=null;$("reader").style.display="none";$("btnStop").disabled=true;
 }
-$("btnTorch").onclick=async()=>{if(!track)return;torch=!torch;
+let torch=false;
+$("btnTorch").onclick=async()=>{
+  if(!track)return;torch=!torch;
   try{await track.applyConstraints({advanced:[{torch}]});}catch(e){torch=false;}
-  $("btnTorch").textContent=torch?"Lanterna ligada":"Lanterna";};
+  $("btnTorch").textContent=torch?"Lanterna ligada":"Lanterna";
+};
+
 $("btnCam").onclick=abrirCamera;
 $("btnStop").onclick=()=>{pararCamera();status("");};
 $("foto").onchange=async e=>{
-  const f=e.target.files[0];if(!f)return;status("Lendo a foto…");await pararCamera();
+  const f=e.target.files[0];if(!f)return;
+  status("Lendo a foto…");await pararCamera();
   try{
     let txt=null;
-    if(bd){try{const bmp=await createImageBitmap(f);for(const r of await bd.detect(bmp))if(extrairChave(r.rawValue)){txt=r.rawValue;break;}}catch(err){}}
-    if(!txt&&typeof ZXingWASM!=="undefined")
-      for(const r of await ZXingWASM.readBarcodes(f,{...OPC,tryDownscale:true}))
-        if(r.text&&extrairChave(r.text)){txt=r.text;break;}
+    if(bd){try{const bmp=await createImageBitmap(f);const r=await bd.detect(bmp);
+      for(const x of r){if(extrairChave(x.rawValue)){txt=x.rawValue;break;}}}catch(err){}}
+    if(!txt&&typeof ZXingWASM!=="undefined"){
+      const r=await ZXingWASM.readBarcodes(f,{...OPC,tryDownscale:true});
+      for(const x of r){if(x.text&&extrairChave(x.text)){txt=x.text;break;}}
+    }
     if(txt)processar(txt);
-    else status("Não achei o código na foto. Fotografe só o código de barras, reto e com boa luz.",true);
+    else status("Não achei o código na foto. Fotografe só o código de barras, reto, ocupando a largura da foto e com boa luz.",true);
   }catch(err){status("Não consegui ler a foto. Tente outra, mais nítida.",true);}
   e.target.value="";
 };
-$("btnOk").onclick=()=>processar($("manual").value)&&($("manual").value="");
-$("manual").addEventListener("keydown",e=>{if(e.key==="Enter"){processar($("manual").value)&&($("manual").value="");}});
+$("btnOk").onclick=()=>processar($("manual").value);
+$("manual").addEventListener("keydown",e=>{if(e.key==="Enter")processar($("manual").value);});
+$("btnCopy").onclick=async()=>{
+  try{await navigator.clipboard.writeText(current);$("btnCopy").textContent="Chave copiada";}
+  catch(e){$("manual").value=current;$("manual").select();$("btnCopy").textContent="Selecionada no campo acima";}
+  setTimeout(()=>$("btnCopy").textContent="Copiar chave",1800);
+};
 
-$("placa").value=sessao.placa||"";$("cond").value=sessao.cond||"";
-render();
-if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(()=>{});
+// Histórico local (só neste aparelho)
+function lerHist(){try{return JSON.parse(localStorage.getItem("danfe_hist")||"[]");}catch(e){return [];}}
+function salvarHist(ch,desc){
+  try{let h=lerHist().filter(x=>x.ch!==ch);h.unshift({ch,desc,t:Date.now()});h=h.slice(0,20);
+    localStorage.setItem("danfe_hist",JSON.stringify(h));}catch(e){}
+  renderHist();
+}
+function renderHist(){
+  const h=lerHist();
+  $("hist").innerHTML=h.length?h.map(x=>`<li><button data-ch="${esc(x.ch)}">${esc(x.desc)}<small class="mono">${esc(x.ch)}</small></button></li>`).join("")
+    :`<li class="note">Nenhuma leitura ainda. Abra a câmera para começar.</li>`;
+  $("btnClear").style.display=h.length?"block":"none";
+  $("hist").querySelectorAll("button").forEach(b=>b.onclick=()=>mostrar(b.dataset.ch));
+}
+$("btnClear").onclick=()=>{try{localStorage.removeItem("danfe_hist");}catch(e){}renderHist();};
+renderHist();
 </script>
 </body>
 </html>
